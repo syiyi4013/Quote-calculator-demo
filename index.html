@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업소용 주방기물 견적 계산기 (데모)</title>
+<style>
+  /* ===== 색상과 기본 설정 ===== */
+  :root {
+    --navy: #14263B;
+    --navy-light: #24405F;
+    --bg: #F3F2EE;
+    --card: #FFFFFF;
+    --text: #1C2430;
+    --muted: #6B7380;
+    --line: #DEDCD5;
+    --danger: #B43C3C;
+    --accent: #C9A86A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+
+  /* ===== 상단 헤더 ===== */
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 28px 0 24px;
+  }
+  header .wrap { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  header .eyebrow {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 6px;
+  }
+  header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  header p.sub { margin: 6px 0 0; color: #C5CED9; font-size: 14px; }
+  .btn-print {
+    background: #fff; color: var(--navy); border: 0;
+    font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    padding: 11px 18px; border-radius: 6px; white-space: nowrap;
+  }
+  .btn-print:hover { background: #E9ECF0; }
+
+  main { padding: 24px 0 40px; }
+
+  /* ===== 연습용 안내 ===== */
+  .notice {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #FBF6EA; border: 1px solid #E8D9B5; color: #6B5320;
+    padding: 12px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 20px;
+  }
+  .notice b { color: #4F3C12; }
+
+  /* ===== 카드 ===== */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(20,38,59,.04);
+    margin-bottom: 20px;
+  }
+  .card-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid var(--line);
+  }
+  .card-head h2 { margin: 0; font-size: 17px; color: var(--navy); }
+  .save-status { font-size: 12px; color: var(--muted); }
+
+  /* ===== 견적서 기본 정보 ===== */
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px;
+    padding: 18px 20px 20px;
+  }
+  .info-grid .full { grid-column: 1 / -1; }
+  .field label {
+    display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 5px;
+  }
+  .field label small { font-weight: 400; color: var(--muted); }
+
+  /* ===== 제품 목록 (표 형태) ===== */
+  .row {
+    display: grid;
+    grid-template-columns: 40px 1fr 150px 90px 140px 44px;
+    gap: 10px; align-items: center;
+    padding: 12px 20px; border-bottom: 1px solid var(--line);
+  }
+  .row.head {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .04em;
+    padding-top: 10px; padding-bottom: 10px; background: #FAFAF8;
+  }
+  .row .num { color: var(--muted); font-size: 14px; text-align: center; }
+  .row .amount { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .head .right { text-align: right; }
+
+  .label-m { display: none; } /* 모바일에서만 보이는 라벨 */
+
+  input[type="text"], input[type="date"], textarea {
+    width: 100%; font: inherit; color: var(--text);
+    padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; transition: border-color .15s, box-shadow .15s;
+  }
+  textarea { resize: vertical; min-height: 84px; }
+  input[type="text"]:focus, input[type="date"]:focus, textarea:focus {
+    outline: none; border-color: var(--navy-light);
+    box-shadow: 0 0 0 3px rgba(20,38,59,.12);
+  }
+  input.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .btn-del {
+    width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--line);
+    background: #fff; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1;
+  }
+  .btn-del:hover { color: var(--danger); border-color: var(--danger); background: #FCF3F3; }
+
+  .empty { padding: 32px 20px; text-align: center; color: var(--muted); font-size: 14px; }
+
+  .actions {
+    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    padding: 16px 20px;
+  }
+  .btn {
+    font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+    padding: 10px 18px; border-radius: 6px; border: 1px solid transparent;
+  }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-light); }
+  .btn-ghost { background: #fff; color: var(--danger); border-color: #E3C4C4; }
+  .btn-ghost:hover { background: #FCF3F3; }
+
+  /* ===== 합계 영역 ===== */
+  .summary { overflow: hidden; }
+  .sum-line {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); font-size: 15px;
+  }
+  .sum-line .val { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sum-line.muted .val { color: var(--muted); }
+  .sum-line.strong { background: #FAFAF8; }
+  .sum-line.strong .val { color: var(--navy); }
+  .discount-input { display: flex; align-items: center; gap: 6px; }
+  .discount-input input { width: 150px; }
+  .discount-warn {
+    display: none; padding: 8px 20px; font-size: 13px; color: var(--danger);
+    background: #FCF3F3; border-bottom: 1px solid var(--line);
+  }
+  .discount-warn.show { display: block; }
+  .vat-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .vat-toggle input { width: 18px; height: 18px; accent-color: var(--navy); cursor: pointer; }
+
+  .total {
+    background: var(--navy); color: #fff;
+    padding: 22px 20px;
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+  }
+  .total .t-label { font-size: 15px; color: #C5CED9; }
+  .total .t-label small { display: block; font-size: 12px; color: var(--accent); margin-top: 2px; }
+  .total .t-value {
+    font-size: 38px; font-weight: 800; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .total .t-value span { font-size: 20px; font-weight: 600; margin-left: 4px; }
+
+  .print-bar { display: flex; justify-content: flex-end; }
+  .print-bar .btn { width: 100%; padding: 14px 18px; font-size: 16px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 0 32px; }
+
+  /* ===== 모바일 화면 (폭 720px 이하) ===== */
+  @media (max-width: 720px) {
+    header h1 { font-size: 21px; }
+    .btn-print { width: 100%; }
+    .info-grid { grid-template-columns: 1fr; padding: 16px; }
+    .row.head { display: none; }
+    .row {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 10px; padding: 16px;
+      position: relative;
+    }
+    .row .num {
+      grid-column: 1 / -1; text-align: left; font-weight: 600; color: var(--navy);
+    }
+    .row .f-name { grid-column: 1 / -1; }
+    .row .f-amount {
+      grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center;
+      background: #FAFAF8; border-radius: 6px; padding: 8px 10px;
+    }
+    .label-m { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .f-amount .label-m { margin: 0; }
+    .row .btn-del { position: absolute; top: 10px; right: 16px; }
+    .card-head, .actions, .sum-line, .total, .discount-warn { padding-left: 16px; padding-right: 16px; }
+    .actions .btn { flex: 1; }
+    .discount-input input { width: 120px; }
+    .total .t-value { font-size: 30px; }
+  }
+
+  /* ================================================================
+     인쇄용 견적서 (화면에서는 숨기고, 인쇄할 때만 보임)
+     ================================================================ */
+  #printDoc { display: none; }
+
+  @media print {
+    @page { size: A4 portrait; margin: 14mm 13mm 16mm; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { background: #fff !important; }
+    body { font-size: 10pt; color: #111; }
+    .screen-only { display: none !important; }
+    #printDoc { display: block; }
+  }
+
+  .pd-top {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-bottom: 2.5pt solid var(--navy); padding-bottom: 8pt; margin-bottom: 14pt;
+  }
+  .pd-top h1 { margin: 0; font-size: 24pt; letter-spacing: .3em; color: var(--navy); font-weight: 800; }
+  .pd-meta { text-align: right; font-size: 9.5pt; color: #333; line-height: 1.6; }
+  .pd-meta b { color: var(--navy); display: inline-block; min-width: 52pt; text-align: left; }
+
+  .pd-parties { display: flex; gap: 14pt; margin-bottom: 12pt; }
+  .pd-party { flex: 1; border: 0.75pt solid #BFC5CD; }
+  .pd-party h3 {
+    margin: 0; padding: 4pt 8pt; font-size: 9pt; letter-spacing: .1em;
+    background: var(--navy); color: #fff; font-weight: 600;
+  }
+  .pd-party table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  .pd-party th, .pd-party td { padding: 5pt 8pt; border-top: 0.5pt solid #E1E4E8; text-align: left; vertical-align: top; }
+  .pd-party th { width: 58pt; color: #555; font-weight: 600; background: #F6F7F9; }
+  .pd-party td { word-break: break-all; }
+  .pd-party .big { font-size: 12pt; font-weight: 700; color: #111; }
+
+  .pd-amount {
+    display: flex; justify-content: space-between; align-items: center;
+    border: 1.5pt solid var(--navy); padding: 9pt 12pt; margin-bottom: 14pt;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .pd-amount .lbl { font-size: 10pt; color: #333; }
+  .pd-amount .lbl small { display: block; font-size: 8.5pt; color: #666; }
+  .pd-amount .num { font-size: 17pt; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+
+  .pd-items { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9.5pt; }
+  .pd-items thead { display: table-header-group; } /* 페이지가 넘어가면 표 머리글 반복 */
+  .pd-items th {
+    background: var(--navy); color: #fff; font-weight: 600; padding: 6pt 6pt;
+    border: 0.5pt solid var(--navy);
+  }
+  .pd-items td { padding: 6pt 6pt; border: 0.5pt solid #C9CED5; vertical-align: top; }
+  .pd-items tr { break-inside: avoid; page-break-inside: avoid; }
+  .pd-items tbody tr:nth-child(even) td { background: #F7F8FA; }
+  .pd-items .c { text-align: center; }
+  .pd-items .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pd-items .name { word-break: break-all; }
+  .pd-items .col-no { width: 7%; }
+  .pd-items .col-name { width: 43%; }
+  .pd-items .col-price { width: 18%; }
+  .pd-items .col-qty { width: 10%; }
+  .pd-items .col-amount { width: 22%; }
+
+  .pd-bottom { display: flex; gap: 14pt; margin-top: 12pt; align-items: flex-start; break-inside: avoid; page-break-inside: avoid; }
+  .pd-notes { flex: 1; border: 0.75pt solid #BFC5CD; min-height: 70pt; }
+  .pd-notes h3 { margin: 0; padding: 4pt 8pt; font-size: 9pt; background: #F1F3F6; color: var(--navy); border-bottom: 0.5pt solid #BFC5CD; }
+  .pd-notes div { padding: 6pt 8pt; font-size: 9.5pt; white-space: pre-wrap; word-break: break-all; }
+  .pd-totals { width: 48%; border-collapse: collapse; font-size: 10pt; }
+  .pd-totals th, .pd-totals td { padding: 5pt 8pt; border-bottom: 0.5pt solid #D5D9DF; }
+  .pd-totals th { text-align: left; font-weight: 500; color: #333; }
+  .pd-totals td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pd-totals tr.grand th, .pd-totals tr.grand td {
+    background: var(--navy); color: #fff; font-weight: 700; font-size: 11.5pt; border-bottom: 0;
+  }
+
+  .pd-foot { margin-top: 18pt; text-align: center; font-size: 8.5pt; color: #777; }
+</style>
+</head>
+<body>
+
+<header class="screen-only">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Commercial Kitchen Equipment</p>
+      <h1>업소용 주방기물 견적 계산기</h1>
+      <p class="sub">제품명·단가·수량을 입력하면 견적 금액이 자동으로 계산됩니다.</p>
+    </div>
+    <button type="button" class="btn-print" data-action="print">견적서 출력 / PDF 저장</button>
+  </div>
+</header>
+
+<main class="wrap screen-only">
+  <div class="notice">
+    <span>ⓘ</span>
+    <div><b>안내:</b> 본 프로그램은 연습용 데모이며 표시된 가격은 실제 판매가가 아닙니다.</div>
+  </div>
+
+  <!-- 견적서 기본 정보 -->
+  <section class="card">
+    <div class="card-head">
+      <h2>견적서 기본 정보</h2>
+      <span class="save-status" data-save-status>자동 저장됨</span>
+    </div>
+    <div class="info-grid">
+      <div class="field full">
+        <label for="info-title">견적서 제목</label>
+        <input type="text" id="info-title" data-info="title" placeholder="예: 주방 설비 견적서">
+      </div>
+      <div class="field">
+        <label for="info-supplier">공급업체명</label>
+        <input type="text" id="info-supplier" data-info="supplier" placeholder="견적을 보내는 회사">
+      </div>
+      <div class="field">
+        <label for="info-client">거래처명</label>
+        <input type="text" id="info-client" data-info="client" placeholder="견적을 받는 회사">
+      </div>
+      <div class="field">
+        <label for="info-manager">담당자명</label>
+        <input type="text" id="info-manager" data-info="manager" placeholder="담당자 이름">
+      </div>
+      <div class="field">
+        <label for="info-date">견적 날짜</label>
+        <input type="date" id="info-date" data-info="date">
+      </div>
+      <div class="field">
+        <label for="info-number">견적서 번호 <small>(선택)</small></label>
+        <input type="text" id="info-number" data-info="number" placeholder="예: Q-2026-001">
+      </div>
+      <div class="field full">
+        <label for="info-notes">비고 및 전달사항</label>
+        <textarea id="info-notes" data-info="notes" placeholder="예: 납품 기간, 설치 조건, 견적 유효기간 등"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- 제품 목록 -->
+  <section class="card">
+    <div class="card-head">
+      <h2>견적 품목</h2>
+      <span class="save-status" data-save-status>자동 저장됨</span>
+    </div>
+
+    <div class="row head">
+      <div>No.</div>
+      <div>제품명</div>
+      <div class="right">단가 (원)</div>
+      <div class="right">수량</div>
+      <div class="right">금액 (원)</div>
+      <div></div>
+    </div>
+
+    <div id="itemList"></div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-primary" id="addBtn">+ 제품 추가</button>
+      <button type="button" class="btn btn-ghost" id="resetBtn">전체 초기화</button>
+    </div>
+  </section>
+
+  <!-- 합계 -->
+  <section class="card summary">
+    <div class="sum-line">
+      <span>공급가액 (상품 합계)</span>
+      <span class="val" id="grossTotal">0원</span>
+    </div>
+    <div class="sum-line">
+      <label for="discountInput">할인 금액</label>
+      <span class="discount-input">
+        −<input type="text" class="numeric" id="discountInput" inputmode="numeric" placeholder="0">원
+      </span>
+    </div>
+    <div class="discount-warn" id="discountWarn"></div>
+    <div class="sum-line strong">
+      <span>할인 후 공급가액</span>
+      <span class="val" id="supplyTotal">0원</span>
+    </div>
+    <div class="sum-line muted">
+      <label class="vat-toggle">
+        <input type="checkbox" id="vatCheck" checked>
+        부가세 10% 포함
+      </label>
+      <span class="val" id="vatAmount">0원</span>
+    </div>
+    <div class="total">
+      <div class="t-label">
+        최종 견적 금액
+        <small id="vatNote">부가세 포함</small>
+      </div>
+      <div class="t-value" id="grandTotal">0<span>원</span></div>
+    </div>
+  </section>
+
+  <div class="print-bar">
+    <button type="button" class="btn btn-primary" data-action="print">견적서 출력 / PDF 저장</button>
+  </div>
+</main>
+
+<footer class="screen-only">입력한 내용은 이 브라우저에만 저장되며, 외부로 전송되지 않습니다.</footer>
+
+<!-- 인쇄 전용 견적서: 인쇄 직전에 자바스크립트가 내용을 채웁니다 -->
+<div id="printDoc"></div>
+
+<script>
+  // ===== 1. 기본 설정 =====
+  // 데모 전용 저장 이름 → 원본 견적 계산기(kitchenQuoteCalculator_v1)의 저장 데이터와 섞이지 않습니다.
+  const STORAGE_KEY = 'kitchenQuoteCalculator_demo_v1';
+
+  // 오늘 날짜를 "2026-11-25" 형태로
+  function todayString() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function defaultInfo() {
+    return { title: '견적서', supplier: '', client: '행복치킨 청라점 (가상)', manager: '', date: todayString(), number: '', notes: '' };
+  }
+
+  // 처음 열었을 때 / 초기화했을 때 들어갈 예시 상품 (연습용 가격)
+  function defaultState() {
+    return {
+      vat: true,
+      discount: '',
+      info: defaultInfo(),
+      items: [
+        { name: '업소용 냉장고',       price: '850000', qty: '1' },
+        { name: '스테인리스 작업대',   price: '180000', qty: '2' }
+      ]
+    };
+  }
+
+  let state = loadState();
+
+  // ===== 2. 저장 / 불러오기 (localStorage) =====
+  function loadState() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data && Array.isArray(data.items)) {
+          // 이전 버전 데이터에는 info / discount 가 없으므로 기본값으로 채웁니다.
+          const info = defaultInfo();
+          if (data.info && typeof data.info === 'object') {
+            Object.keys(info).forEach(k => {
+              if (typeof data.info[k] === 'string') info[k] = data.info[k];
+            });
+          }
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(info.date)) info.date = todayString();
+          return {
+            vat: data.vat !== false,
+            discount: cleanQty(String(data.discount ?? '')),
+            info: info,
+            items: data.items.map(it => ({
+              name: String(it.name ?? ''),
+              price: cleanPrice(String(it.price ?? '')),
+              qty: cleanQty(String(it.qty ?? ''))
+            }))
+          };
+        }
+      }
+    } catch (e) { /* 저장된 데이터가 없거나 깨졌으면 기본값 사용 */ }
+    return defaultState();
+  }
+
+  let statusTimer;
+  function saveState() {
+    const statuses = document.querySelectorAll('[data-save-status]');
+    let msg;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      msg = '✓ 자동 저장됨';
+    } catch (e) {
+      msg = '저장할 수 없습니다 (브라우저 설정 확인)';
+    }
+    clearTimeout(statusTimer);
+    statuses.forEach(s => { s.textContent = msg; s.style.color = '#2E7D4F'; });
+    statusTimer = setTimeout(() => statuses.forEach(s => { s.style.color = ''; }), 1200);
+  }
+
+  // ===== 3. 입력값 정리 (잘못된 문자 제거) =====
+  // 0 이상의 정수만 (수량, 할인 금액에 사용)
+  function cleanQty(v) {
+    return v.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+  }
+  // 단가: 0 이상의 숫자만 (숫자와 소수점 하나만 허용, 쉼표는 제거)
+  function cleanPrice(v) {
+    v = v.replace(/[^0-9.]/g, '');
+    const firstDot = v.indexOf('.');
+    if (firstDot !== -1) {
+      v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+    }
+    return v.replace(/^0+(?=\d)/, '');
+  }
+
+  // ===== 4. 숫자 표시 (1,000 단위 쉼표) =====
+  function toNumber(v) {
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+  function won(n) {
+    return Math.round(n).toLocaleString('ko-KR');
+  }
+  function formatPriceText(v) {
+    if (v === '') return '';
+    const [intPart, decPart] = v.split('.');
+    const withComma = Number(intPart || '0').toLocaleString('ko-KR');
+    return decPart !== undefined ? withComma + '.' + decPart : withComma;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+
+  // ===== 5. 금액 계산 (모든 계산은 이 함수 하나에서) =====
+  function calculate() {
+    // 제품별 금액은 원 단위로 반올림
+    const lines = state.items.map(it => Math.round(toNumber(it.price) * toNumber(it.qty)));
+    const gross = lines.reduce((a, b) => a + b, 0);          // 할인 전 공급가액
+    const discountInput = Math.floor(toNumber(state.discount));
+    const discount = Math.min(discountInput, gross);          // 공급가액을 넘지 않게
+    const supply = gross - discount;                          // 할인 후 공급가액
+    const vat = state.vat ? Math.round(supply * 0.1) : 0;     // 부가세 (소수점 반올림)
+    return { lines, gross, discountInput, discount, supply, vat, total: supply + vat };
+  }
+
+  // ===== 6. 화면 그리기 =====
+  const listEl = document.getElementById('itemList');
+  const discountEl = document.getElementById('discountInput');
+
+  function renderList() {
+    if (state.items.length === 0) {
+      listEl.innerHTML = '<div class="empty">등록된 제품이 없습니다. “+ 제품 추가” 버튼을 눌러 주세요.</div>';
+      return;
+    }
+    listEl.innerHTML = state.items.map((it, i) => `
+      <div class="row" data-index="${i}">
+        <div class="num">${i + 1}</div>
+        <div class="f-name">
+          <span class="label-m">제품명</span>
+          <input type="text" data-field="name" value="${escapeHtml(it.name)}" placeholder="제품명을 입력하세요">
+        </div>
+        <div class="f-price">
+          <span class="label-m">단가 (원)</span>
+          <input type="text" class="numeric" data-field="price" inputmode="decimal"
+                 value="${formatPriceText(it.price)}" placeholder="0">
+        </div>
+        <div class="f-qty">
+          <span class="label-m">수량</span>
+          <input type="text" class="numeric" data-field="qty" inputmode="numeric"
+                 value="${it.qty}" placeholder="0">
+        </div>
+        <div class="f-amount amount">
+          <span class="label-m">금액</span>
+          <span class="amount-val">0원</span>
+        </div>
+        <div><button type="button" class="btn-del" title="삭제" aria-label="${i + 1}번 제품 삭제">×</button></div>
+      </div>
+    `).join('');
+  }
+
+  function renderTotals() {
+    const c = calculate();
+    const rows = listEl.querySelectorAll('.row');
+    c.lines.forEach((amount, i) => {
+      const cell = rows[i] && rows[i].querySelector('.amount-val');
+      if (cell) cell.textContent = won(amount) + '원';
+    });
+
+    document.getElementById('grossTotal').textContent = won(c.gross) + '원';
+    document.getElementById('supplyTotal').textContent = won(c.supply) + '원';
+    document.getElementById('vatAmount').textContent = state.vat ? won(c.vat) + '원' : '제외';
+    document.getElementById('grandTotal').innerHTML = won(c.total) + '<span>원</span>';
+    document.getElementById('vatNote').textContent = state.vat ? '부가세 10% 포함' : '부가세 별도 (미포함)';
+    document.getElementById('vatCheck').checked = state.vat;
+
+    const warn = document.getElementById('discountWarn');
+    if (c.discountInput > c.gross) {
+      warn.textContent = `할인 금액이 공급가액보다 커서 ${won(c.gross)}원까지만 적용됩니다.`;
+      warn.classList.add('show');
+    } else {
+      warn.classList.remove('show');
+    }
+  }
+
+  function renderInfo() {
+    document.querySelectorAll('[data-info]').forEach(el => {
+      el.value = state.info[el.dataset.info] ?? '';
+    });
+    discountEl.value = state.discount === '' ? '' : won(toNumber(state.discount));
+  }
+
+  function renderAll() { renderInfo(); renderList(); renderTotals(); }
+
+  // ===== 7. 인쇄용 견적서 만들기 =====
+  function formatKoreanDate(v) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+    return m ? `${m[1]}년 ${Number(m[2])}월 ${Number(m[3])}일` : '-';
+  }
+  function orDash(v) { return v && v.trim() ? escapeHtml(v.trim()) : '-'; }
+
+  function renderPrint() {
+    const c = calculate();
+    const info = state.info;
+    const rows = state.items.length
+      ? state.items.map((it, i) => `
+          <tr>
+            <td class="c">${i + 1}</td>
+            <td class="name">${orDash(it.name)}</td>
+            <td class="r">${won(toNumber(it.price))}</td>
+            <td class="r">${won(toNumber(it.qty))}</td>
+            <td class="r">${won(c.lines[i])}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="c">등록된 제품이 없습니다.</td></tr>';
+
+    document.getElementById('printDoc').innerHTML = `
+      <div class="pd-top">
+        <h1>${orDash(info.title)}</h1>
+        <div class="pd-meta">
+          ${info.number.trim() ? `<div><b>견적번호</b>${escapeHtml(info.number.trim())}</div>` : ''}
+          <div><b>견적일자</b>${formatKoreanDate(info.date)}</div>
+        </div>
+      </div>
+
+      <div class="pd-parties">
+        <div class="pd-party">
+          <h3>수 신</h3>
+          <table>
+            <tr><th>거래처명</th><td class="big">${orDash(info.client)} ${info.client.trim() ? '귀하' : ''}</td></tr>
+          </table>
+        </div>
+        <div class="pd-party">
+          <h3>공 급 자</h3>
+          <table>
+            <tr><th>공급업체</th><td class="big">${orDash(info.supplier)}</td></tr>
+            <tr><th>담당자</th><td>${orDash(info.manager)}</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="pd-amount">
+        <div class="lbl">아래와 같이 견적합니다.
+          <small>합계 금액 (${state.vat ? '부가세 포함' : '부가세 별도'})</small>
+        </div>
+        <div class="num">₩ ${won(c.total)} 원</div>
+      </div>
+
+      <table class="pd-items">
+        <colgroup>
+          <col class="col-no"><col class="col-name"><col class="col-price"><col class="col-qty"><col class="col-amount">
+        </colgroup>
+        <thead>
+          <tr><th>No.</th><th>제품명</th><th>단가 (원)</th><th>수량</th><th>금액 (원)</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      <div class="pd-bottom">
+        <div class="pd-notes">
+          <h3>비고 및 전달사항</h3>
+          <div>${info.notes.trim() ? escapeHtml(info.notes.trim()) : '-'}</div>
+        </div>
+        <table class="pd-totals">
+          <tr><th>공급가액 (상품 합계)</th><td>${won(c.gross)} 원</td></tr>
+          <tr><th>할인 금액</th><td>${c.discount ? '− ' + won(c.discount) : '0'} 원</td></tr>
+          <tr><th>할인 후 공급가액</th><td>${won(c.supply)} 원</td></tr>
+          <tr><th>부가세 (10%)</th><td>${state.vat ? won(c.vat) + ' 원' : '별도'}</td></tr>
+          <tr class="grand"><th>최종 견적 금액</th><td>${won(c.total)} 원</td></tr>
+        </table>
+      </div>
+
+      <div class="pd-foot">본 견적서는 ${formatKoreanDate(info.date)} 기준으로 작성되었습니다.<br>
+        본 프로그램은 연습용 데모이며 표시된 가격은 실제 판매가가 아닙니다.</div>
+    `;
+  }
+
+  // PDF로 저장할 때 파일 이름이 "견적서_거래처명_날짜"가 되도록 잠시 제목을 바꿉니다.
+  const originalTitle = document.title;
+  window.addEventListener('beforeprint', () => {
+    renderPrint();
+    const parts = [state.info.title.trim() || '견적서', state.info.client.trim(), state.info.date]
+      .filter(Boolean).map(s => s.replace(/[\\/:*?"<>|]/g, ''));
+    document.title = parts.join('_');
+  });
+  window.addEventListener('afterprint', () => { document.title = originalTitle; });
+
+  // ===== 8. 사용자 입력 처리 =====
+  // 견적서 기본 정보
+  document.querySelectorAll('[data-info]').forEach(el => {
+    el.addEventListener('input', () => {
+      state.info[el.dataset.info] = el.value;
+      saveState();
+    });
+  });
+  // 날짜를 지우면 오늘 날짜로 되돌림
+  document.getElementById('info-date').addEventListener('change', e => {
+    if (!e.target.value) {
+      e.target.value = todayString();
+      state.info.date = e.target.value;
+      saveState();
+    }
+  });
+
+  // 제품 목록 입력
+  listEl.addEventListener('input', e => {
+    const input = e.target;
+    const row = input.closest('.row');
+    if (!row || !input.dataset.field) return;
+    const item = state.items[Number(row.dataset.index)];
+    const field = input.dataset.field;
+
+    if (field === 'name') {
+      item.name = input.value;
+    } else {
+      const cleaned = field === 'qty' ? cleanQty(input.value) : cleanPrice(input.value);
+      item[field] = cleaned;
+      // 잘못된 문자가 입력되었으면 입력칸을 바로 정리
+      const shown = field === 'qty' ? input.value : input.value.replace(/,/g, '');
+      if (shown !== cleaned) {
+        input.value = cleaned;
+      }
+    }
+    renderTotals();
+    saveState();
+  });
+
+  // 단가 입력칸: 입력 중에는 쉼표 없이, 입력을 마치면 쉼표 표시
+  listEl.addEventListener('focusin', e => {
+    if (e.target.dataset.field === 'price') {
+      e.target.value = e.target.value.replace(/,/g, '');
+    }
+  });
+  listEl.addEventListener('focusout', e => {
+    if (e.target.dataset.field === 'price') {
+      const row = e.target.closest('.row');
+      const item = state.items[Number(row.dataset.index)];
+      if (item.price.endsWith('.')) item.price = item.price.slice(0, -1);
+      e.target.value = formatPriceText(item.price);
+      saveState();
+    }
+  });
+
+  // 삭제 버튼
+  listEl.addEventListener('click', e => {
+    if (!e.target.classList.contains('btn-del')) return;
+    const index = Number(e.target.closest('.row').dataset.index);
+    state.items.splice(index, 1);
+    renderList();
+    renderTotals();
+    saveState();
+  });
+
+  // 제품 추가 버튼
+  document.getElementById('addBtn').addEventListener('click', () => {
+    state.items.push({ name: '', price: '', qty: '1' });
+    renderList();
+    renderTotals();
+    saveState();
+    const inputs = listEl.querySelectorAll('input[data-field="name"]');
+    inputs[inputs.length - 1].focus();
+  });
+
+  // 할인 금액 입력 (원 단위 정수, 공급가액 초과 불가)
+  discountEl.addEventListener('focus', () => {
+    discountEl.value = state.discount;
+  });
+  discountEl.addEventListener('input', () => {
+    let cleaned = cleanQty(discountEl.value);
+    const gross = calculate().gross;
+    if (cleaned !== '' && Number(cleaned) > gross) cleaned = String(gross);
+    state.discount = cleaned;
+    if (discountEl.value !== cleaned) discountEl.value = cleaned;
+    renderTotals();
+    saveState();
+  });
+  discountEl.addEventListener('blur', () => {
+    discountEl.value = state.discount === '' ? '' : won(toNumber(state.discount));
+  });
+
+  // 부가세 체크박스
+  document.getElementById('vatCheck').addEventListener('change', e => {
+    state.vat = e.target.checked;
+    renderTotals();
+    saveState();
+  });
+
+  // 견적서 출력 / PDF 저장 버튼
+  document.querySelectorAll('[data-action="print"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      renderPrint();
+      window.print();
+    });
+  });
+
+  // 전체 초기화 버튼 (확인 메시지 후 실행)
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    const ok = confirm('견적서 정보, 할인 금액, 제품 목록이 모두 삭제되고\n처음 상태(가상 거래처 + 예시 상품 2개)로 돌아갑니다.\n정말 초기화할까요?');
+    if (!ok) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    state = defaultState();
+    renderAll();
+    saveState();
+  });
+
+  // ===== 9. 시작 =====
+  renderAll();
+  renderPrint();
+</script>
+</body>
+</html>
